@@ -9,8 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repo
@@ -33,24 +31,25 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app
+          name: publish
           path: ./publish
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: app
+          name: publish
+          path: ./publish  # put artifact here
 
-      - name: List artifact files
-        run: ls -R ./app  # sanity check
+      - name: List files for sanity check
+        run: ls -R ./publish
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -64,4 +63,4 @@ jobs:
         with:
           app-name: 'taskboardanton'
           slot-name: 'Production'
-          package: ./app
+          package: ./publish
