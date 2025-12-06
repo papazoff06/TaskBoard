@@ -8,11 +8,13 @@ using TaskBoard.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- Database ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// --- Identity ---
 builder.Services
     .AddDefaultIdentity<User>(options =>
     {
@@ -29,16 +31,22 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
 
+// --- Azure App Service HTTPS + Proxy Support ---
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    // Allows Azure’s load balancer headers
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
-// REQUIRED for Azure App Service (Linux)
-// Azure terminates HTTPS at the front door and sends requests to your app over HTTP.
-// This allows HTTPS redirection to work correctly.
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor |
-                       ForwardedHeaders.XForwardedProto
-});
+// MUST be first middleware (after Build)
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
@@ -63,6 +71,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
+
 app.Run();
 
 public partial class Program { }
